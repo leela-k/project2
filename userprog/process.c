@@ -68,33 +68,6 @@ strlcpy2 (char *dst, const char *src, size_t size)
 tid_t
 process_execute (const char *file_name) 
 {
-  // char **input = (char**)malloc(200*sizeof(char*));
-  // for(int i = 0; i < 200;i++){
-  //   input[i] = (char*)malloc(50*sizeof(char));
-  // }
-  int ind = 0;
-  char *token;
-  char *rest = file_name;
-  char* stack = PHYS_BASE;
-  // asm volatile 
-  // hex_dump();
-  // *stack = "hi";
-  // printf("stac is %c\n", stack[1]);
-  while((token = strtok_r(rest, " ", &rest)))
-  {
-    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
-    printf("%p\n", stack);
-    stack -= (strlen(token) + 1);
-    printf("Stack pointer is %p %p\n", PHYS_BASE, stack);
-    // strlcpy2(stack, token, strlen(token) + 1);
-    // strlcat(input[ind], "\0", sizeof(input[ind]));
-    ind ++;
-  }
-  printf("ind is %d\n", ind);
-  printf("Copy done\n");
-  // for(int i = 0; i < 3; i++){
-  //   printf("Token:%s\n", input[i]);
-  // }
   char *fn_copy;
   tid_t tid;
   // printf("File name %s In process execute\n", file_name);
@@ -107,6 +80,10 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+   // char **input = (char**)malloc(200*sizeof(char*));
+  // for(int i = 0; i < 200;i++){
+  //   input[i] = (char*)malloc(50*sizeof(char));
+  // }
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -120,14 +97,57 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  char *input;
+  char *token;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
 
+  token = strtok_r (file_name, " ", &input);
+  success = load (file_name, &if_.eip, &if_.esp);
+  printf("success is %d\n", success);
+  printf("In start process\n");
+  printf("%s\n", file_name);
+  int ind = -1;
+  void* stack = if_.esp;
+  printf("init stack p is %p\n", stack);
+  do{
+    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
+    printf("stack1 p is %p\n", stack);
+    stack = (void*) (((char*) stack) - (strlen(token) + 1));
+    printf("stack2 p is %p\n", stack);
+    strlcpy((char*)stack, token, strlen(token) + 1);
+    printf("String copy finished\n");
+    token = strtok_r(NULL, " ", &input);
+    ind ++;
+  } while(token != NULL);
+  // printf("here1\n");
+  // printf("val is %c\n", *(stack + 1));
+  // printf("val2 is %c\n", *(stack + 2));
+  // printf("val3 is %c\n", *(stack + 3));
+  // printf("val4 is %c\n", *(stack + 4));
+  // printf("here2\n");
+  // while((token = strtok_r(rest, " ", &rest)))
+  // {
+   
+  //   printf("esp is %p eip is %p\n", if_.esp, if_.eip);
+  //   if_.esp -= (strlen(token) + 1);
+  //   printf("Stack pointer is %p %p\n", PHYS_BASE, if_.esp);
+  //   memcpy((char*)if_.esp, token, strlen(token) + 1);
+    
+  //   // strlcpy((char*)if_.esp, token, strlen(token) + 1);
+  //   printf("copy data is %s\n", *(char*)if_.esp);
+  //   // strlcat(input[ind], "\0", sizeof(input[ind]));
+  //   ind ++;
+  // }
+  printf("ind is %d\n", ind);
+  printf("Copy done\n");
+  // for(int i = 0; i < 3; i++){
+  //   printf("Token:%s\n", input[i]);
+  // }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -152,6 +172,11 @@ start_process (void *file_name_)
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
+static int setup_user_stack(void**stack, char * file_name){
+  void* stack_pointer;
+  stack_pointer = *stack;
+
+}
 int
 process_wait (tid_t child_tid UNUSED) 
 {
@@ -504,7 +529,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
