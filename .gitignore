@@ -2,3 +2,9 @@ cscope.files
 cscope.out
 TAGS
 tags
+utils/pintos
+utils/Pintos.pm
+utils/pintos-gdb
+utils/setitimer-helper.o
+utils/squish-pty.o
+utils/squish-unix.o
