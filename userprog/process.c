@@ -21,6 +21,46 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+void *
+memcpy2 (void *dst_, const void *src_, size_t size) 
+{
+  printf("Sizemem is %d\n", size);
+  unsigned char *dst = dst_;
+  const unsigned char *src = src_;
+
+  ASSERT (dst != NULL || size == 0);
+  ASSERT (src != NULL || size == 0);
+  printf("Size of dest is %d", strlen(src));
+  printf("Pointers are %p %p\n", dst, src);
+  printf("Src is %s\n", src);
+  // printf("src 0 is %s\n", *src);
+  // while (size-- > 0)
+  //   *dst++ = *src++;
+
+  return dst_;
+}
+
+size_t
+strlcpy2 (char *dst, const char *src, size_t size) 
+{
+  size_t src_len;
+  printf("Size is %d\n", size);
+  ASSERT (dst != NULL);
+  ASSERT (src != NULL);
+
+  src_len = strlen (src);
+  if (size > 0) 
+    {
+      size_t dst_len = size - 1;
+      if (src_len < dst_len)
+        dst_len = src_len;
+      printf("dst_len is %d\n", dst_len);
+      memcpy2 (dst, src, dst_len);
+      // dst[dst_len] = '\0';
+    }
+  return src_len;
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -28,9 +68,36 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  // char **input = (char**)malloc(200*sizeof(char*));
+  // for(int i = 0; i < 200;i++){
+  //   input[i] = (char*)malloc(50*sizeof(char));
+  // }
+  int ind = 0;
+  char *token;
+  char *rest = file_name;
+  char* stack = PHYS_BASE;
+  // asm volatile 
+  // hex_dump();
+  // *stack = "hi";
+  // printf("stac is %c\n", stack[1]);
+  while((token = strtok_r(rest, " ", &rest)))
+  {
+    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
+    printf("%p\n", stack);
+    stack -= (strlen(token) + 1);
+    printf("Stack pointer is %p %p\n", PHYS_BASE, stack);
+    // strlcpy2(stack, token, strlen(token) + 1);
+    // strlcat(input[ind], "\0", sizeof(input[ind]));
+    ind ++;
+  }
+  printf("ind is %d\n", ind);
+  printf("Copy done\n");
+  // for(int i = 0; i < 3; i++){
+  //   printf("Token:%s\n", input[i]);
+  // }
   char *fn_copy;
   tid_t tid;
-
+  // printf("File name %s In process execute\n", file_name);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -437,7 +504,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }

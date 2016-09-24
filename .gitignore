@@ -8,3 +8,4 @@ utils/pintos-gdb
 utils/setitimer-helper.o
 utils/squish-pty.o
 utils/squish-unix.o
+utils/filesys.dsk
