@@ -68,6 +68,33 @@ strlcpy2 (char *dst, const char *src, size_t size)
 tid_t
 process_execute (const char *file_name) 
 {
+  // char **input = (char**)malloc(200*sizeof(char*));
+  // for(int i = 0; i < 200;i++){
+  //   input[i] = (char*)malloc(50*sizeof(char));
+  // }
+  int ind = 0;
+  char *token;
+  char *rest = file_name;
+  char* stack = PHYS_BASE;
+  // asm volatile 
+  // hex_dump();
+  // *stack = "hi";
+  // printf("stac is %c\n", stack[1]);
+  while((token = strtok_r(rest, " ", &rest)))
+  {
+    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
+    printf("%p\n", stack);
+    stack -= (strlen(token) + 1);
+    printf("Stack pointer is %p %p\n", PHYS_BASE, stack);
+    // strlcpy2(stack, token, strlen(token) + 1);
+    // strlcat(input[ind], "\0", sizeof(input[ind]));
+    ind ++;
+  }
+  printf("ind is %d\n", ind);
+  printf("Copy done\n");
+  // for(int i = 0; i < 3; i++){
+  //   printf("Token:%s\n", input[i]);
+  // }
   char *fn_copy;
   tid_t tid;
   // printf("File name %s In process execute\n", file_name);
