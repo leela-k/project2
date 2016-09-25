@@ -33,9 +33,9 @@ memcpy2 (void *dst_, const void *src_, size_t size)
   printf("Size of dest is %d", strlen(src));
   printf("Pointers are %p %p\n", dst, src);
   printf("Src is %s\n", src);
-  // printf("src 0 is %s\n", *src);
-  // while (size-- > 0)
-  //   *dst++ = *src++;
+  printf("src 0 is %s\n", *src);
+  while (size-- > 0)
+    *dst++ = *src++;
 
   return dst_;
 }
@@ -56,7 +56,7 @@ strlcpy2 (char *dst, const char *src, size_t size)
         dst_len = src_len;
       printf("dst_len is %d\n", dst_len);
       memcpy2 (dst, src, dst_len);
-      // dst[dst_len] = '\0';
+      dst[dst_len] = '\0';
     }
   return src_len;
 }
@@ -138,16 +138,12 @@ start_process (void *file_name_)
 
   token = strtok_r (file_name, " ", &input);
   success = load (file_name, &if_.eip, &if_.esp);
-  printf("success is %d\n", success);
-  printf("In start process\n");
-  printf("%s\n", file_name);
+  if (!success) 
+    thread_exit ();
   int ind = -1;
   void* stack = if_.esp;
-  printf("init stack p is %p\n", stack);
   int stack_size = 0;
   do{
-    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
-    printf("stack1 p is %p\n", stack);
     stack = (void*) (((char*) stack) - (strlen(token) + 1));
     addr[size] = stack;
     size += 1;
@@ -157,36 +153,51 @@ start_process (void *file_name_)
     }
 
     stack_size += (strlen(token) + 1);
-    printf("stack2 p is %p\n", stack);
-    printf("saved stack2 p is %p\n", addr[size - 1]);
-    printf("Token is %s\n", token);
     strlcpy((char*)stack, token, strlen(token) + 1);
-    printf("String copy finished\n");
     token = strtok_r(NULL, " ", &input);
     ind ++;
   } while(token != NULL);
   uintptr_t temp = (uintptr_t)stack;
   stack = (char*)(temp - temp % 4);
   stack_size += (int)(temp % 4);
-  printf("here1\n");
-  for(int i = 0; i < stack_size; i ++){
-     printf("val is %c\n", *(char*)(stack + i));
-  }
-  printf("here2\n");
-  printf("There are %d addresses\n", size);
-  for(int i = 0; i < size; i ++){
-    printf("addr is %p\n", addr[i]);
-  }
-  printf("There are %d arguments on stack.\n", ind + 1);
-  printf("Copy done\n");
 
-  // for(int i = 0; i < 3; i++){
-  //   printf("Token:%s\n", input[i]);
-  // }
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  strlcpy((char*)stack, "\0\0\0\0", 4);
+
+  stack = (char*) ((char*) stack) - (4 * size);
+  stack_size += (4 * size);
+  memcpy((char**)stack, addr, 4*size);
+
+  char** argv = (char **) stack;
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  memcpy((char***)stack, &argv, 4);
+
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  int argv_size = ind + 1;
+  int* argc = &argv_size;
+  memcpy((int*)stack, argc, 4);
+
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  printf("\nPrinting strings in stack\n");
+  for(int i = stack_size - 1; i >= 0; i --){
+     printf("%p   val1 is %c\n", stack + i, *(char*)(stack + i));
+  }
+  printf("\n\n");
+  printf("Printing pointers in stack\n");
+  for(int i = stack_size - 1; i >= 0; i --){
+    if(i % 4 == 0){
+      printf("%p   valp is %p\n",stack + i, *(char**)(stack + i));
+    }
+  }
+
+  printf("Copy done\n");
+  if_.esp = (void *) stack;
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
