@@ -33,9 +33,9 @@ memcpy2 (void *dst_, const void *src_, size_t size)
   printf("Size of dest is %d", strlen(src));
   printf("Pointers are %p %p\n", dst, src);
   printf("Src is %s\n", src);
-  // printf("src 0 is %s\n", *src);
-  // while (size-- > 0)
-  //   *dst++ = *src++;
+  printf("src 0 is %s\n", *src);
+  while (size-- > 0)
+    *dst++ = *src++;
 
   return dst_;
 }
@@ -56,7 +56,7 @@ strlcpy2 (char *dst, const char *src, size_t size)
         dst_len = src_len;
       printf("dst_len is %d\n", dst_len);
       memcpy2 (dst, src, dst_len);
-      // dst[dst_len] = '\0';
+      dst[dst_len] = '\0';
     }
   return src_len;
 }
@@ -80,18 +80,18 @@ process_execute (const char *file_name)
   // hex_dump();
   // *stack = "hi";
   // printf("stac is %c\n", stack[1]);
-  while((token = strtok_r(rest, " ", &rest)))
-  {
-    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
-    printf("%p\n", stack);
-    stack -= (strlen(token) + 1);
-    printf("Stack pointer is %p %p\n", PHYS_BASE, stack);
-    // strlcpy2(stack, token, strlen(token) + 1);
-    // strlcat(input[ind], "\0", sizeof(input[ind]));
-    ind ++;
-  }
-  printf("ind is %d\n", ind);
-  printf("Copy done\n");
+  // while((token = strtok_r(rest, " ", &rest)))
+  // {
+  //   printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
+  //   printf("%p\n", stack);
+  //   stack -= (strlen(token) + 1);
+  //   printf("Stack pointer is %p %p\n", PHYS_BASE, stack);
+  //   // strlcpy2(stack, token, strlen(token) + 1);
+  //   // strlcat(input[ind], "\0", sizeof(input[ind]));
+  //   ind ++;
+  // }
+  // printf("ind is %d\n", ind);
+  // printf("Copy done\n");
   // for(int i = 0; i < 3; i++){
   //   printf("Token:%s\n", input[i]);
   // }
@@ -126,6 +126,9 @@ start_process (void *file_name_)
   bool success;
   char *input;
   char *token;
+  int size = 0;
+  int capacity = 20;
+  char** addr = (char**) malloc(sizeof(char*) * capacity);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -135,50 +138,66 @@ start_process (void *file_name_)
 
   token = strtok_r (file_name, " ", &input);
   success = load (file_name, &if_.eip, &if_.esp);
-  printf("success is %d\n", success);
-  printf("In start process\n");
-  printf("%s\n", file_name);
+  if (!success) 
+    thread_exit ();
   int ind = -1;
   void* stack = if_.esp;
-  printf("init stack p is %p\n", stack);
+  int stack_size = 0;
   do{
-    printf("%s, %d %d\n", token, strlen(token), strlen(token) + 1);
-    printf("stack1 p is %p\n", stack);
     stack = (void*) (((char*) stack) - (strlen(token) + 1));
-    printf("stack2 p is %p\n", stack);
+    addr[size] = stack;
+    size += 1;
+    if(size >= capacity){
+      capacity *= 2;
+      addr = (char**) realloc(addr, sizeof(char*) * capacity);
+    }
+
+    stack_size += (strlen(token) + 1);
     strlcpy((char*)stack, token, strlen(token) + 1);
-    printf("String copy finished\n");
     token = strtok_r(NULL, " ", &input);
     ind ++;
   } while(token != NULL);
-  // printf("here1\n");
-  // printf("val is %c\n", *(stack + 1));
-  // printf("val2 is %c\n", *(stack + 2));
-  // printf("val3 is %c\n", *(stack + 3));
-  // printf("val4 is %c\n", *(stack + 4));
-  // printf("here2\n");
-  // while((token = strtok_r(rest, " ", &rest)))
-  // {
-   
-  //   printf("esp is %p eip is %p\n", if_.esp, if_.eip);
-  //   if_.esp -= (strlen(token) + 1);
-  //   printf("Stack pointer is %p %p\n", PHYS_BASE, if_.esp);
-  //   memcpy((char*)if_.esp, token, strlen(token) + 1);
-    
-  //   // strlcpy((char*)if_.esp, token, strlen(token) + 1);
-  //   printf("copy data is %s\n", *(char*)if_.esp);
-  //   // strlcat(input[ind], "\0", sizeof(input[ind]));
-  //   ind ++;
-  // }
-  printf("ind is %d\n", ind);
+  uintptr_t temp = (uintptr_t)stack;
+  stack = (char*)(temp - temp % 4);
+  stack_size += (int)(temp % 4);
+
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  strlcpy((char*)stack, "\0\0\0\0", 4);
+
+  stack = (char*) ((char*) stack) - (4 * size);
+  stack_size += (4 * size);
+  memcpy((char**)stack, addr, 4*size);
+
+  char** argv = (char **) stack;
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  memcpy((char***)stack, &argv, 4);
+
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  int argv_size = ind + 1;
+  int* argc = &argv_size;
+  memcpy((int*)stack, argc, 4);
+
+  stack = (char*) ((char*) stack) - 4;
+  stack_size += 4;
+  printf("\nPrinting strings in stack\n");
+  for(int i = stack_size - 1; i >= 0; i --){
+     printf("%p   val1 is %c\n", stack + i, *(char*)(stack + i));
+  }
+  printf("\n\n");
+  printf("Printing pointers in stack\n");
+  for(int i = stack_size - 1; i >= 0; i --){
+    if(i % 4 == 0){
+      printf("%p   valp is %p\n",stack + i, *(char**)(stack + i));
+    }
+  }
+
   printf("Copy done\n");
-  // for(int i = 0; i < 3; i++){
-  //   printf("Token:%s\n", input[i]);
-  // }
+  if_.esp = (void *) stack;
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
