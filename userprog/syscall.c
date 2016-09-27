@@ -4,6 +4,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+typedef int pid_t;
+typedef int fid_t;
+
 static void syscall_handler (struct intr_frame *);
 static void halt(void);
 static void exit (int status);
@@ -33,12 +36,12 @@ syscall_handler (struct intr_frame *f UNUSED){
 	int * callArg = f->esp;
 
 	/* Check if parameters are outside user virtual memory, i.e. the system call was not issued by a user */
-  	if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 1) && is_user_vaddr (callArg + 2) && is_user_vaddr (callArg + 3)))
-    	sys_exit (-1);
+  	// if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 1) && is_user_vaddr (callArg + 2) && is_user_vaddr (callArg + 3)))
+   //  	sys_exit (-1);
 
     /* Check if interrupt vector is outside allowable range */
-    if (*callArg < SYS_HALT || *callArg > SYS_INUMBER)
-    	sys_exit (-1);
+    // if (*callArg < SYS_HALT || *callArg > SYS_INUMBER)
+    // 	sys_exit (-1);
 
     int params[4];
     int i = 0;
@@ -67,7 +70,7 @@ syscall_handler (struct intr_frame *f UNUSED){
     		break;
     	case SYS_CREATE:
     		printf("CREATE CALLED\n");
-    		create(params[1], param[2]);
+    		create(params[1], params[2]);
     		break;
     	case SYS_REMOVE:
     		printf("REMOVE CALLED\n");
@@ -160,7 +163,7 @@ process_wait().
 Implementing this system call requires considerably more work than any of the rest.*/
 static int wait (pid_t pid){
 	printf("ENTERED WAIT HANDLER\n");
-
+	return -1;
 }
 /*Creates a new file called file initially initial_size bytes in size. Returns true if successful, false otherwise. 
 Creating a new file does not open it: opening the new file is a separate operation which would require a open system call.*/
@@ -171,6 +174,7 @@ static bool create (const char *file, unsigned initial_size){
 it is open or closed, and removing an open file does not close it. See Removing an Open File, for details.*/
 static bool remove (const char *file){
 	printf("ENTERED REMOVE HANDLER\n");
+	return false;
 }
 /*Opens the file called file. Returns a nonnegative integer handle called a "file descriptor" (fd), or -1 if the file could 
 not be opened.
@@ -185,16 +189,19 @@ file descriptor. Different file descriptors for a single file are closed indepen
 they do not share a file position.*/
 static int open (const char *file){
 	printf("ENTERED OPEN HANDLER\n");
+	return -1;
 }
 /*Returns the size, in bytes, of the file open as fd.*/
 static int filesize (int fd){
 	printf("ENTERED FILESIZE HANDLER\n");
+	return -1;
 }
 /*Reads size bytes from the file open as fd into buffer. Returns the number of bytes actually read (0 at end of file), 
 or -1 if the file could not be read (due to a condition other than end of file). Fd 0 reads from the keyboard using 
 input_getc().*/
 static int read (int fd, void *buffer, unsigned size){
 	printf("ENTERED READ HANDLER\n");
+	return -1;
 }
 /*Writes size bytes from buffer to the open file fd. Returns the number of bytes actually written, which may be less than 
 size if some bytes could not be written.
@@ -208,6 +215,7 @@ Otherwise, lines of text output by different processes may end up interleaved on
 readers and our grading scripts.*/
 static int write (int fd, const void *buffer, unsigned size){
 	printf("ENTERED WRITE HANDLER\n");
+	return -1;
 }
 /*Changes the next byte to be read or written in open file fd to position, expressed in bytes from the beginning of the 
 file. (Thus, a position of 0 is the file's start.)
@@ -222,6 +230,7 @@ static void seek (int fd, unsigned position){
 beginning of the file.*/
 static unsigned tell (int fd){
 	printf("ENTERED TELL HANDLER\n");
+	return 0;
 }
 /*Closes file descriptor fd. Exiting or terminating a process implicitly closes all its open file descriptors, as if by 
 calling this function for each one.*/
