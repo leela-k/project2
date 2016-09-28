@@ -37,9 +37,13 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  char* in;
+  char* fname = strtok_r(file_name, " ", &in);
+
+
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -86,13 +90,15 @@ start_process (void *file_name_)
     token = strtok_r(NULL, " ", &input);
     ind ++;
   } while(token != NULL);
+
   uintptr_t temp = (uintptr_t)stack;
   stack = (char*)(temp - temp % 4);
   stack_size += (int)(temp % 4);
-
+  
   stack = (char*) ((char*) stack) - 4;
   stack_size += 4;
   strlcpy((char*)stack, "\0\0\0\0", 4);
+  
 
   stack = (char*) ((char*) stack) - (4 * size);
   stack_size += (4 * size);
@@ -161,8 +167,8 @@ int
 process_wait (tid_t child_tid) 
 {
   // This is a temporary hack in order for tests to run until process_wait is implemented
-  for ( int c = 1 ; c <= 32767 ; c++ )
-       for ( int d = 1 ; d <= 32767 ; d++ )
+  for ( int c = 1 ; c <= 40000 ; c++ )
+       for ( int d = 1 ; d <= 40000 ; d++ )
        {}
   return -1;
 }
@@ -173,6 +179,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
