@@ -35,13 +35,8 @@ static void
 syscall_handler (struct intr_frame *f UNUSED){
 	int * callArg = f->esp;
 
-	/* Check if parameters are outside user virtual memory, i.e. the system call was not issued by a user */
-  	// if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 1) && is_user_vaddr (callArg + 2) && is_user_vaddr (callArg + 3)))
-   //  	sys_exit (-1);
-
-    /* Check if interrupt vector is outside allowable range */
-    // if (*callArg < SYS_HALT || *callArg > SYS_INUMBER)
-    // 	sys_exit (-1);
+  	if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 3)))
+    	sys_exit (-1);
 
     int params[4];
     int i = 0;
@@ -50,7 +45,7 @@ syscall_handler (struct intr_frame *f UNUSED){
     	i++;
     }
 
-    printf("About to switch on the SYSTEM CALL\n");
+    //printf("About to switch on the SYSTEM CALL\n");
     switch (params[0]){
     	case SYS_HALT:
     		printf("HALT CALLED\n");
@@ -89,7 +84,9 @@ syscall_handler (struct intr_frame *f UNUSED){
     		read(params[1], params[2], params[3]);
     		break;
     	case SYS_WRITE:
-    		printf("WRITE CALLED\n");
+    		//printf("WRITE CALLED\n");
+    		//char * buff = (char *)params[2];
+    		//printf("\n\n%s\n\n", buff);
     		write(params[1], params[2], params[3]);
     		break;
     	case SYS_SEEK:
@@ -109,8 +106,9 @@ syscall_handler (struct intr_frame *f UNUSED){
 			break;
     }
 
-  printf ("system call!\n");
-  thread_exit ();
+  //printf ("system call!\n");
+  return;
+  //thread_exit ();
 }
 
 /* Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h). 
@@ -123,9 +121,8 @@ static void halt(void){
 this is the status that will be returned. Conventionally, a status of 0 indicates success and 
 nonzero values indicate errors.*/
 static void exit (int status){
-	
 	printf("ENTERED EXIT HANDLER\n");
-
+	thread_exit();
 }
 /*Runs the executable whose name is given in cmd_line, passing any given arguments, and returns the new process's program 
 id (pid). Must return pid -1, which otherwise should not be a valid pid, if the program cannot load or run for any reason. 
@@ -133,7 +130,6 @@ Thus, the parent process cannot return from the exec until it knows whether the 
 executable. You must use appropriate synchronization to ensure this.*/
 static pid_t exec (const char *cmd_line){
 	printf("ENTERED EXEC HANDLER\n");
-
 }
 /*Waits for a child process pid and retrieves the child's exit status.
 If pid is still alive, waits until it terminates. Then, returns the status that pid passed to exit. If pid did not call 
@@ -169,6 +165,18 @@ static int wait (pid_t pid){
 Creating a new file does not open it: opening the new file is a separate operation which would require a open system call.*/
 static bool create (const char *file, unsigned initial_size){
 	printf("ENTERED CREATE HANDLER\n");
+
+    //Fail if file name empty
+    if(file[0] == '/0'){
+        return false;
+    }
+
+    //Fail if file name too long
+    if(strlen(file) > 14){
+        return false;
+    }
+
+    return filesys_create(file, initial_size);
 }
 /*Deletes the file called file. Returns true if successful, false otherwise. A file may be removed regardless of whether 
 it is open or closed, and removing an open file does not close it. See Removing an Open File, for details.*/
@@ -215,7 +223,14 @@ Otherwise, lines of text output by different processes may end up interleaved on
 readers and our grading scripts.*/
 static int write (int fd, const void *buffer, unsigned size){
 	printf("ENTERED WRITE HANDLER\n");
-	return -1;
+	
+	if(fd == 1){
+		putbuf(buffer, size);
+		return size;
+	}
+	else{
+		printf("SOMETHING WENT WRONG DURING WRITE HANDLE\n");
+	}
 }
 /*Changes the next byte to be read or written in open file fd to position, expressed in bytes from the beginning of the 
 file. (Thus, a position of 0 is the file's start.)
