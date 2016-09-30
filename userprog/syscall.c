@@ -182,6 +182,8 @@ bool create (const char *file, unsigned initial_size){
     if(file == NULL){
         exit(-1);
     }
+    if(!(is_user_vaddr(file)))
+        exit(-1);
     if(!pagedir_get_page(cur->pagedir, file)){
         exit(-1);
     }
@@ -224,9 +226,12 @@ int open (const char *file){
     struct thread* cur = thread_current();
     if(file == NULL)
         return -1;
+    if(!(is_user_vaddr(file)))
+        exit(-1);
     if(!pagedir_get_page(cur->pagedir, file)){
         exit(-1);
     }
+
     struct file* newFile = filesys_open(file);
     if(!newFile){
         return -1;
@@ -249,9 +254,18 @@ or -1 if the file could not be read (due to a condition other than end of file).
 input_getc().*/
 int read (int fd, void *buffer, unsigned size){
 	//printf("ENTERED READ HANDLER\n");
-
+    struct thread* cur = thread_current();
     //Read from standard input
+    if (!(is_user_vaddr(buffer)))
+        exit(-1);
+    if(!pagedir_get_page(cur->pagedir, buffer)){
+        exit(-1);
+    }
+
     if(fd == 1){
+        return -1;
+    }
+    if(fd == 0){
         uint32_t i;
         char* buf = (char*) buffer;
         for(i = 0; i < size; i++){
@@ -260,16 +274,12 @@ int read (int fd, void *buffer, unsigned size){
         return size;
     }
     else{
-        struct thread* cur = thread_current();
         struct file* fileToRead = getFileByFd(fd);
         //NULL file
         if(fileToRead == NULL){
             return -1;
         }
-        //bad ptr
-        else if(!pagedir_get_page(cur->pagedir, fileToRead)){
-            exit(-1);
-        }
+        
         int bytes = file_read(fileToRead, buffer, size);
         return bytes;
     }
@@ -287,22 +297,29 @@ Otherwise, lines of text output by different processes may end up interleaved on
 readers and our grading scripts.*/
 int write (int fd, const void *buffer, unsigned size){
 	//printf("ENTERED WRITE HANDLER\n");
-    struct file* f;
+    struct thread* cur = thread_current();
+
+    if(!pagedir_get_page(cur->pagedir, buffer)){
+        exit(-1);
+    }
+
+    struct file* fileS;
     if(fd == 0){
         return -1;
     }
-	if(fd == 1){
-		putbuf(buffer, size);
-		return size;
-	}
-	else{
-        f = getFileByFd(fd);
-        if(f == NULL){
+    if(fd == 1){
+        putbuf(buffer, size);
+        return size;
+    }
+    else{
+        fileS = getFileByFd(fd);
+        if(fileS == NULL){
             return -1;
         }
-		printf("SOMETHING WENT WRONG DURING WRITE HANDLE\n");
-        return -1;
-	}
+        return file_write(fileS,buffer, size);
+        printf("SOMETHING WENT WRONG DURING WRITE HANDLE\n");
+        
+    }
 }
 /*Changes the next byte to be read or written in open file fd to position, expressed in bytes from the beginning of the 
 file. (Thus, a position of 0 is the file's start.)
