@@ -3,24 +3,27 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include <stdbool.h>
+#include <string.h>
 
 typedef int pid_t;
 typedef int fid_t;
 
-static void syscall_handler (struct intr_frame *);
-static void halt(void);
-static void exit (int status);
-static pid_t exec (const char *cmd_line);
-static int wait (pid_t pid);
-static bool create (const char *file, unsigned initial_size);
-static bool remove (const char *file);
-static int open (const char *file);
-static int filesize (int fd);
-static int read (int fd, void *buffer, unsigned size);
-static int write (int fd, const void *buffer, unsigned size);
-static void seek (int fd, unsigned position);
-static unsigned tell (int fd);
-static void close (int fd);
+void syscall_handler (struct intr_frame *);
+void halt(void);
+void exit (int status);
+pid_t exec (const char *cmd_line);
+int wait (pid_t pid);
+bool create (const char *file, unsigned initial_size);
+bool remove (const char *file);
+int open (const char *file);
+int filesize (int fd);
+int read (int fd, void *buffer, unsigned size);
+int write (int fd, const void *buffer, unsigned size);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
+void close (int fd);
 
 
 
@@ -31,12 +34,12 @@ syscall_init (void)
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void
+void
 syscall_handler (struct intr_frame *f UNUSED){
 	int * callArg = f->esp;
 
   	if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 3)))
-    	sys_exit (-1);
+    	exit(-1);
 
     int params[4];
     int i = 0;
@@ -48,61 +51,61 @@ syscall_handler (struct intr_frame *f UNUSED){
     //printf("About to switch on the SYSTEM CALL\n");
     switch (params[0]){
     	case SYS_HALT:
-    		printf("HALT CALLED\n");
+    		//printf("HALT CALLED\n");
     		halt();
     		break;
     	case SYS_EXIT:
-    		printf("EXIT CALLED\n");
+    		//printf("EXIT CALLED\n");
     		exit(params[1]);
     		break;
     	case SYS_EXEC:
-    		printf("EXEC CALLED\n");
-    		exec(params[1]);
+    		//printf("EXEC CALLED\n");
+    		f->eax = exec((const char*)params[1]);
     		break;
     	case SYS_WAIT:
-    		printf("WAIT CALLED\n");
-    		wait(params[1]);
+    		//printf("WAIT CALLED\n");
+    		f->eax = wait((pid_t)params[1]);
     		break;
     	case SYS_CREATE:
-    		printf("CREATE CALLED\n");
-    		create(params[1], params[2]);
+    		//printf("CREATE CALLED\n");
+    		f->eax = create((const char*)params[1], (unsigned)params[2]);
     		break;
     	case SYS_REMOVE:
-    		printf("REMOVE CALLED\n");
-    		remove(params[1]);
+    		//printf("REMOVE CALLED\n");
+    		f->eax = remove((const char*)params[1]);
     		break;
     	case SYS_OPEN:
-    		printf("OPEN CALLED\n");
-    		open(params[1]);
+    		//printf("OPEN CALLED\n");
+    		f->eax = open((const char*)params[1]);
     		break;
     	case SYS_FILESIZE:
-    		printf("FILESIZE CALLED\n");
-    		filesize(params[1]);
+    		//printf("FILESIZE CALLED\n");
+    		f->eax = filesize(params[1]);
     		break;
     	case SYS_READ:
-    		printf("READ CALLED\n");
-    		read(params[1], params[2], params[3]);
+    		//printf("READ CALLED\n");
+    		f->eax = read(params[1], (void*)params[2], (unsigned)params[3]);
     		break;
     	case SYS_WRITE:
     		//printf("WRITE CALLED\n");
     		//char * buff = (char *)params[2];
     		//printf("\n\n%s\n\n", buff);
-    		write(params[1], params[2], params[3]);
+    		f->eax = write(params[1], (void*)params[2], (unsigned)params[3]);
     		break;
     	case SYS_SEEK:
-    		printf("SEEK CALLED\n");
-    		seek(params[1], params[2]);
+    		//printf("SEEK CALLED\n");
+    		seek(params[1], (unsigned)params[2]);
     		break;
     	case SYS_TELL:
-    		printf("TELL CALLED\n");
-    		tell(params[1]);
+    		//printf("TELL CALLED\n");
+    		f->eax = tell(params[1]);
     		break;
     	case SYS_CLOSE:
-    		printf("CLOSE CALLED\n");
+    		//printf("CLOSE CALLED\n");
     		close(params[1]);
     		break;
     	default:
-    		printf("WHAT THE FUCK\n");
+    		//printf("WHAT THE FUCK\n");
 			break;
     }
 
@@ -113,22 +116,24 @@ syscall_handler (struct intr_frame *f UNUSED){
 
 /* Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h). 
 This should be seldom used, because you lose some information about possible deadlock situations, etc.*/
-static void halt(void){
-	printf("ENTERED HALT HANDLER\n");
+void halt(void){
+	//printf("ENTERED HALT HANDLER\n");
 	shutdown_power_off();
 }
 /* Terminates the current user program, returning status to the kernel. If the process's parent waits for it (see below), 
 this is the status that will be returned. Conventionally, a status of 0 indicates success and 
 nonzero values indicate errors.*/
-static void exit (int status){
-	printf("ENTERED EXIT HANDLER\n");
+void exit (int status){
+	//printf("ENTERED EXIT HANDLER\n");
+    struct thread *cur = thread_current();
+    printf("%s: exit(%d)\n", cur->name, status);
 	thread_exit();
 }
 /*Runs the executable whose name is given in cmd_line, passing any given arguments, and returns the new process's program 
 id (pid). Must return pid -1, which otherwise should not be a valid pid, if the program cannot load or run for any reason. 
 Thus, the parent process cannot return from the exec until it knows whether the child process successfully loaded its 
 executable. You must use appropriate synchronization to ensure this.*/
-static pid_t exec (const char *cmd_line){
+pid_t exec (const char *cmd_line){
 	printf("ENTERED EXEC HANDLER\n");
 }
 /*Waits for a child process pid and retrieves the child's exit status.
@@ -157,31 +162,40 @@ process_wait() according to the comment at the top of the function and then impl
 process_wait().
 
 Implementing this system call requires considerably more work than any of the rest.*/
-static int wait (pid_t pid){
-	printf("ENTERED WAIT HANDLER\n");
+int wait (pid_t pid){
+	//printf("ENTERED WAIT HANDLER\n");
 	return -1;
 }
 /*Creates a new file called file initially initial_size bytes in size. Returns true if successful, false otherwise. 
 Creating a new file does not open it: opening the new file is a separate operation which would require a open system call.*/
-static bool create (const char *file, unsigned initial_size){
-	printf("ENTERED CREATE HANDLER\n");
+bool create (const char *file, unsigned initial_size){
 
-    //Fail if file name empty
-    if(file[0] == '/0'){
-        return false;
+    //printf("File name is: %s\n", file);
+
+    //Fail if file is NULL
+    if(file == NULL){
+        exit(-1);
     }
+
+    // //Fail if file name empty
+    // if(file[0] == '\0'){
+    //     printf("File name empty\n");
+    //     //exit(-1);
+    //     return false;
+    // }
 
     //Fail if file name too long
     if(strlen(file) > 14){
         return false;
+        
     }
 
-    return filesys_create(file, initial_size);
+    return  filesys_create(file, initial_size);
 }
 /*Deletes the file called file. Returns true if successful, false otherwise. A file may be removed regardless of whether 
 it is open or closed, and removing an open file does not close it. See Removing an Open File, for details.*/
-static bool remove (const char *file){
-	printf("ENTERED REMOVE HANDLER\n");
+bool remove (const char *file){
+	//printf("ENTERED REMOVE HANDLER\n");
 	return false;
 }
 /*Opens the file called file. Returns a nonnegative integer handle called a "file descriptor" (fd), or -1 if the file could 
@@ -195,20 +209,20 @@ Each process has an independent set of file descriptors. File descriptors are no
 When a single file is opened more than once, whether by a single process or different processes, each open returns a new 
 file descriptor. Different file descriptors for a single file are closed independently in separate calls to close and 
 they do not share a file position.*/
-static int open (const char *file){
-	printf("ENTERED OPEN HANDLER\n");
+int open (const char *file){
+	//printf("ENTERED OPEN HANDLER\n");
 	return -1;
 }
 /*Returns the size, in bytes, of the file open as fd.*/
-static int filesize (int fd){
-	printf("ENTERED FILESIZE HANDLER\n");
+int filesize (int fd){
+	//printf("ENTERED FILESIZE HANDLER\n");
 	return -1;
 }
 /*Reads size bytes from the file open as fd into buffer. Returns the number of bytes actually read (0 at end of file), 
 or -1 if the file could not be read (due to a condition other than end of file). Fd 0 reads from the keyboard using 
 input_getc().*/
-static int read (int fd, void *buffer, unsigned size){
-	printf("ENTERED READ HANDLER\n");
+int read (int fd, void *buffer, unsigned size){
+	//printf("ENTERED READ HANDLER\n");
 	return -1;
 }
 /*Writes size bytes from buffer to the open file fd. Returns the number of bytes actually written, which may be less than 
@@ -221,8 +235,8 @@ Fd 1 writes to the console. Your code to write to the console should write all o
 at least as long as size is not bigger than a few hundred bytes. (It is reasonable to break up larger buffers.) 
 Otherwise, lines of text output by different processes may end up interleaved on the console, confusing both human 
 readers and our grading scripts.*/
-static int write (int fd, const void *buffer, unsigned size){
-	printf("ENTERED WRITE HANDLER\n");
+int write (int fd, const void *buffer, unsigned size){
+	//printf("ENTERED WRITE HANDLER\n");
 	
 	if(fd == 1){
 		putbuf(buffer, size);
@@ -230,6 +244,7 @@ static int write (int fd, const void *buffer, unsigned size){
 	}
 	else{
 		printf("SOMETHING WENT WRONG DURING WRITE HANDLE\n");
+        return -1;
 	}
 }
 /*Changes the next byte to be read or written in open file fd to position, expressed in bytes from the beginning of the 
@@ -238,17 +253,17 @@ A seek past the current end of a file is not an error. A later read obtains 0 by
 write extends the file, filling any unwritten gap with zeros. (However, in Pintos files have a fixed length until 
 project 4 is complete, so writes past end of file will return an error.) These semantics are implemented in the file 
 system and do not require any special effort in system call implementation.*/
-static void seek (int fd, unsigned position){
-	printf("ENTERED SEEK HANDLER\n");
+void seek (int fd, unsigned position){
+	//printf("ENTERED SEEK HANDLER\n");
 }
 /*Returns the position of the next byte to be read or written in open file fd, expressed in bytes from the 
 beginning of the file.*/
-static unsigned tell (int fd){
-	printf("ENTERED TELL HANDLER\n");
+unsigned tell (int fd){
+	//printf("ENTERED TELL HANDLER\n");
 	return 0;
 }
 /*Closes file descriptor fd. Exiting or terminating a process implicitly closes all its open file descriptors, as if by 
 calling this function for each one.*/
-static void close (int fd){
-	printf("ENTERED CLOSE HANDLER\n");
+void close (int fd){
+	//printf("ENTERED CLOSE HANDLER\n");
 }
