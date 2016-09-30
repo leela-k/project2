@@ -241,14 +241,39 @@ int open (const char *file){
 /*Returns the size, in bytes, of the file open as fd.*/
 int filesize (int fd){
 	//printf("ENTERED FILESIZE HANDLER\n");
-	return -1;
+    struct file* fileToSizeUp = getFileByFd(fd);
+    return file_length(fileToSizeUp);
 }
 /*Reads size bytes from the file open as fd into buffer. Returns the number of bytes actually read (0 at end of file), 
 or -1 if the file could not be read (due to a condition other than end of file). Fd 0 reads from the keyboard using 
 input_getc().*/
 int read (int fd, void *buffer, unsigned size){
 	//printf("ENTERED READ HANDLER\n");
-	return -1;
+
+    //Read from standard input
+    if(fd == 1){
+        uint32_t i;
+        char* buf = (char*) buffer;
+        for(i = 0; i < size; i++){
+            buf[i] = input_getc();
+        }
+        return size;
+    }
+    else{
+        struct thread* cur = thread_current();
+        struct file* fileToRead = getFileByFd(fd);
+        //NULL file
+        if(fileToRead == NULL){
+            return -1;
+        }
+        //bad ptr
+        else if(!pagedir_get_page(cur->pagedir, fileToRead)){
+            exit(-1);
+        }
+        int bytes = file_read(fileToRead, buffer, size);
+        return bytes;
+    }
+    return -1;
 }
 /*Writes size bytes from buffer to the open file fd. Returns the number of bytes actually written, which may be less than 
 size if some bytes could not be written.
