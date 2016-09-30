@@ -178,13 +178,15 @@ bool create (const char *file, unsigned initial_size){
 
     //Fail if file is NULL
     //checkPtr((void * ) file);
+    struct thread* cur = thread_current();
     if(file == NULL){
         exit(-1);
     }
-
-    if(!(is_user_vaddr(file)))
+    if(!pagedir_get_page(cur->pagedir, file)){
         exit(-1);
+    }
 
+    //checkPtr(file);
     // //Fail if file name empty
     // if(file[0] == '\0'){
     //     printf("File name empty\n");
@@ -219,13 +221,18 @@ file descriptor. Different file descriptors for a single file are closed indepen
 they do not share a file position.*/
 int open (const char *file){
 	//printf("ENTERED OPEN HANDLER\n");
+    struct thread* cur = thread_current();
+    if(file == NULL)
+        return -1;
+    if(!pagedir_get_page(cur->pagedir, file)){
+        exit(-1);
+    }
     struct file* newFile = filesys_open(file);
-    if(!file){
+    if(!newFile){
         return -1;
     }
     struct filewd* fed = malloc(sizeof(struct filewd));
     fed->fileS = newFile;
-    struct thread* cur = thread_current();
     fed->fd = cur->fdIndex;
     cur->fdIndex++;
     list_push_back(&cur->files, &fed->elem);
@@ -310,7 +317,8 @@ struct file* getFileByFd(int fd){
 }
 
 void checkPtr(void* pt){
-    if (!(is_user_vaddr(pt)) || pt < userSpaceBottom)
+    struct thread* cur = thread_current();
+    if (!(is_user_vaddr(pt)) || pt < userSpaceBottom || !pagedir_get_page(cur->pagedir, pt))
         exit(-1);
 
 }
