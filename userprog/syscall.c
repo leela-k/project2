@@ -25,7 +25,8 @@ int write (int fd, const void *buffer, unsigned size);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
-
+struct file* getFileByFd(int fd);
+void checkPtr(void* pt);
 
 
 
@@ -176,9 +177,13 @@ bool create (const char *file, unsigned initial_size){
     //printf("File name is: %s\n", file);
 
     //Fail if file is NULL
+    //checkPtr((void * ) file);
     if(file == NULL){
         exit(-1);
     }
+
+    if(!(is_user_vaddr(file)))
+        exit(-1);
 
     // //Fail if file name empty
     // if(file[0] == '\0'){
@@ -214,7 +219,17 @@ file descriptor. Different file descriptors for a single file are closed indepen
 they do not share a file position.*/
 int open (const char *file){
 	//printf("ENTERED OPEN HANDLER\n");
-	return -1;
+    struct file* newFile = filesys_open(file);
+    if(!file){
+        return -1;
+    }
+    struct filewd* fed = malloc(sizeof(struct filewd));
+    fed->fileS = newFile;
+    struct thread* cur = thread_current();
+    fed->fd = cur->fdIndex;
+    cur->fdIndex++;
+    list_push_back(&cur->files, &fed->elem);
+	return fed->fd;
 }
 /*Returns the size, in bytes, of the file open as fd.*/
 int filesize (int fd){
@@ -240,12 +255,19 @@ Otherwise, lines of text output by different processes may end up interleaved on
 readers and our grading scripts.*/
 int write (int fd, const void *buffer, unsigned size){
 	//printf("ENTERED WRITE HANDLER\n");
-	
+    struct file* f;
+    if(fd == 0){
+        return -1;
+    }
 	if(fd == 1){
 		putbuf(buffer, size);
 		return size;
 	}
 	else{
+        f = getFileByFd(fd);
+        if(f == NULL){
+            return -1;
+        }
 		printf("SOMETHING WENT WRONG DURING WRITE HANDLE\n");
         return -1;
 	}
@@ -270,3 +292,26 @@ calling this function for each one.*/
 void close (int fd){
 	//printf("ENTERED CLOSE HANDLER\n");
 }
+
+struct file* getFileByFd(int fd){
+    struct thread* cur =  thread_current();
+    struct list_elem *e;
+
+      for (e = list_begin (&cur->files); e != list_end (&cur->files);
+           e = list_next (e))
+        {
+          struct filewd *f = list_entry (e, struct filewd, elem);
+          if(fd == f->fd)
+            {
+                return f->fileS;
+            }
+        }
+    return NULL;
+}
+
+void checkPtr(void* pt){
+    if (!(is_user_vaddr(pt)) || pt < userSpaceBottom)
+        exit(-1);
+
+}
+
