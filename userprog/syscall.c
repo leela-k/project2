@@ -340,6 +340,27 @@ unsigned tell (int fd){
 calling this function for each one.*/
 void close (int fd){
 	//printf("ENTERED CLOSE HANDLER\n");
+    if(fd == 0 || fd == 1){
+        return;
+    }
+    
+    struct thread* cur =  thread_current();
+    struct list_elem *e;
+
+      for (e = list_begin (&cur->files); e != list_end (&cur->files);
+           e = list_next (e))
+        {
+          struct filewd *f = list_entry (e, struct filewd, elem);
+          if(fd == f->fd)
+            {
+                list_remove(&(f->elem));
+                free(f);
+                return;
+            }
+        }
+
+    
+
 }
 
 struct file* getFileByFd(int fd){
