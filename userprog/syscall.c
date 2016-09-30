@@ -9,6 +9,7 @@
 
 typedef int pid_t;
 typedef int fid_t;
+#define userSpaceBottom ((void*) 0x08084000)
 
 void syscall_handler (struct intr_frame *);
 void halt(void);
@@ -40,6 +41,8 @@ syscall_handler (struct intr_frame *f UNUSED){
 
   	if (!(is_user_vaddr(callArg) && is_user_vaddr (callArg + 3)))
     	exit(-1);
+    if(callArg < userSpaceBottom)
+        exit(-1);
 
     int params[4];
     int i = 0;
