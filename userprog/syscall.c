@@ -329,11 +329,21 @@ project 4 is complete, so writes past end of file will return an error.) These s
 system and do not require any special effort in system call implementation.*/
 void seek (int fd, unsigned position){
 	//printf("ENTERED SEEK HANDLER\n");
+    struct file* fileS = getFileByFd(fd);
+    if(!fileS){
+        return -1;
+    }
+    return file_seek(fileS, position);
 }
 /*Returns the position of the next byte to be read or written in open file fd, expressed in bytes from the 
 beginning of the file.*/
 unsigned tell (int fd){
 	//printf("ENTERED TELL HANDLER\n");
+    struct file* fileS = getFileByFd(fd);
+    if(!fileS){
+        return -1;
+    }
+    return file_tell(fileS);
 	return 0;
 }
 /*Closes file descriptor fd. Exiting or terminating a process implicitly closes all its open file descriptors, as if by 
