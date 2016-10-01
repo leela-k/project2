@@ -9,7 +9,7 @@
 
 typedef int pid_t;
 typedef int fid_t;
-#define userSpaceBottom ((void*) 0x08084000)
+#define userSpaceBottom ((void*) 0x08048000)
 
 void syscall_handler (struct intr_frame *);
 void halt(void);
@@ -110,6 +110,7 @@ syscall_handler (struct intr_frame *f UNUSED){
     		break;
     	default:
     		//printf("WHAT THE FUCK\n");
+        exit(-1);
 			break;
     }
 
