@@ -11,3 +11,4 @@ utils/squish-unix.o
 utils/filesys.dsk
 *.o
 *.a
+userprog/files

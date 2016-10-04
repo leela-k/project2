@@ -200,7 +200,28 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+#ifdef USERPROG
+  struct thread *cur_thread;
+  cur_thread = thread_current();
+  sema_init(&t->wait, 0);
+  // list_init(&t->files);
+  if(cur_thread != initial_thread){
+    list_push_back(&cur_thread->children, &cur_thread->children_elem);
+  }
+  list_init(&t->children);
+  t->parent = cur_thread;
+  t->done_exit = false;
+  t->parent->child_loaded = 0;
+  // t->parent = thread_current();
+  // t->done_wait = false;
+  // t->done_exit = false;
+  // list_init(&(t->children));
+  // list_init(&(t->parent->children));
+  // struct childinfo* ci = malloc(sizeof(struct childinfo));
+  // ci -> tid = t->tid;
+  // ci -> threadC = t;
+  // list_push_back(&(t->parent->children), &(ci->elem));
+#endif
   return tid;
 }
 
@@ -579,6 +600,20 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+get_thread(tid_t tid)
+{
+  struct list_elem *elem;
+  struct thread *t = NULL;
+  for (elem = list_begin (&all_list); elem != list_end (&all_list); elem = list_next (elem))
+    {
+      t = list_entry (elem, struct thread, allelem);
+      ASSERT (is_thread (t));
+      if (t->tid == tid)
+        return t;
+    }
+    
+  return NULL;
 }
 
 /* Offset of `stack' member within `struct thread'.

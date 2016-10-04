@@ -28,9 +28,10 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-
+  struct thread *parent = thread_current();
   char *fn_copy;
   tid_t tid;
+  struct thread *t;
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -40,12 +41,25 @@ process_execute (const char *file_name)
   char* in;
   char* fname = strtok_r(file_name, " ", &in);
 
-
+  // struct childinfo* ci = malloc(sizeof(struct childinfo));
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
+  t = get_thread(tid);
+  // sema_down(&t->wait);
+  // while(t->status == THREAD_BLOCKED){
+  // 	thread_unblock(t);
+  // }
+  if(t->prog_status == -1){
+  	// printf("Calling wait\n");
+  	process_wait(t->tid);
+  }
+  // printf("TID is %d status is %d\n", t->tid, t->prog_status);
+  // ci -> tid = tid;
+  // ci -> threadC = thread_by_tid(tid);
+  // list_push_back(&parent->children, &ci->elem);
   return tid;
 }
 
@@ -62,7 +76,7 @@ start_process (void *file_name_)
   int size = 0;
   int capacity = 20;
   char** addr = (char**) malloc(sizeof(char*) * capacity);
-
+  struct thread *cur = thread_current ();
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -71,7 +85,7 @@ start_process (void *file_name_)
 
   token = strtok_r (file_name, " ", &input);
   success = load (file_name, &if_.eip, &if_.esp);
-  if (!success) 
+  if (!success)
     thread_exit ();
   int ind = -1;
   void* stack = if_.esp;
@@ -134,7 +148,7 @@ start_process (void *file_name_)
     // }
   // }
 
-  //printf("Copy done\n");
+  // printf("Copy done\n");
   if_.esp = (void *) stack;
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -158,29 +172,75 @@ start_process (void *file_name_)
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
-static int setup_user_stack(void**stack, char * file_name){
-  void* stack_pointer;
-  stack_pointer = *stack;
 
-}
 int
 process_wait (tid_t child_tid) 
 {
   // This is a temporary hack in order for tests to run until process_wait is implemented
-  for ( int c = 1 ; c <= 40000 ; c++ )
-       for ( int d = 1 ; d <= 40000 ; d++ )
-       {}
-  return -1;
+  // for ( int c = 1 ; c <= 40000 ; c++ )
+  //      for ( int d = 1 ; d <= 40000 ; d++ )
+  //      {}
+  // return -1;
+  // printf("child is %d\n", child_tid);
+  struct thread *cur_thread, *child;
+  cur_thread = thread_current();
+  child = get_thread(child_tid);
+  // printf("Got child\n");
+  if(child == NULL || child->parent->tid != cur_thread->tid){
+  		// printf("Invalid %d %d %d\n", child_tid, cur_thread->tid, child->parent->tid);
+  		return -1;
+  }
+  // printf("Valid %d %d %d\n", child_tid, cur_thread->tid, child->parent->tid);
+  // printf("Prog status is %d\n", child->prog_status);
+  // printf("Semaphore is %d\n", child->wait.value);
+  // Process already waited
+  if(child->wait.value == 1){
+  	// printf("Already waited\n");
+  	return -1;
+  }
+  // child->done_wait = true;
+  // while(!(child->done_exit)){
+  sema_down(&child->wait);
+  printf("%s: exit(%d)\n", child->name, child->prog_status);
+  while(child->status == THREAD_BLOCKED){
+  	// printf("Thread is blocked\n");
+  	thread_unblock(child);
+  }
+  sema_up(&child->wait);
+  // printf("Sempahore finished waiting is %d\n", child->wait.value);
+  return child->prog_status;
+  // }
+  // return child->status;
+
+
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
+  // printf("IN PROCESS_EXIT\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
-
+  // printf("Exiting %d\n", cur->tid);
+  while(!list_empty(&cur->wait.waiters)){
+  	sema_up(&cur->wait);
+  }
+  cur->done_exit = true;
+  if(cur -> parent){
+  	intr_disable();
+  	thread_block();
+  	intr_enable();
+  }
+  // if(thread_alive(cur -> parent)){
+  // 	struct list_elem *child;
+  // 	while(!list_empty(&cur->parent->children)){
+  // 		child = list_begin(&cur->parent->children);
+  // 		struct *curr_thread;
+  // 		curr_thread = thread_by_tid(child->tid);
+  // 	}
+  // }
+  // cur->done_exit = true;
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

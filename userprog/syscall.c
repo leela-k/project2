@@ -59,7 +59,7 @@ syscall_handler (struct intr_frame *f UNUSED){
     		halt();
     		break;
     	case SYS_EXIT:
-    		//printf("EXIT CALLED\n");
+    		// printf("EXIT CALLED\n");
     		exit(params[1]);
     		break;
     	case SYS_EXEC:
@@ -129,17 +129,37 @@ void halt(void){
 this is the status that will be returned. Conventionally, a status of 0 indicates success and 
 nonzero values indicate errors.*/
 void exit (int status){
-	//printf("ENTERED EXIT HANDLER\n");
+	// printf("ENTERED EXIT HANDLER\n");
     struct thread *cur = thread_current();
-    printf("%s: exit(%d)\n", cur->name, status);
+    
+    cur->prog_status = status;
+   
 	thread_exit();
+	return -1;
 }
 /*Runs the executable whose name is given in cmd_line, passing any given arguments, and returns the new process's program 
 id (pid). Must return pid -1, which otherwise should not be a valid pid, if the program cannot load or run for any reason. 
 Thus, the parent process cannot return from the exec until it knows whether the child process successfully loaded its 
 executable. You must use appropriate synchronization to ensure this.*/
 pid_t exec (const char *cmd_line){
-	printf("ENTERED EXEC HANDLER\n");
+	// printf("ENTERED EXEC HANDLER\n");
+	struct thread* cur = thread_current();
+	if(!cmd_line){
+		exit(-1);
+	}
+	if(!(is_user_vaddr(cmd_line))){
+		exit(-1);
+	}
+	if(!pagedir_get_page(cur->pagedir, cmd_line)){
+        exit(-1);
+    }
+
+    // struct file* newFile = filesys_open(cmd_line);
+    // if(!newFile){
+    //     return -1;
+    // }
+	pid_t ret_code = process_execute(cmd_line);
+	return ret_code;
 }
 /*Waits for a child process pid and retrieves the child's exit status.
 If pid is still alive, waits until it terminates. Then, returns the status that pid passed to exit. If pid did not call 
@@ -168,8 +188,13 @@ process_wait().
 
 Implementing this system call requires considerably more work than any of the rest.*/
 int wait (pid_t pid){
-	//printf("ENTERED WAIT HANDLER\n");
-	return -1;
+	// printf("ENTERED WAIT HANDLER\n");
+
+  	/* If pid does not exist, isn't a child of current process,
+  	   or pid has already waited, then fail with -1*/
+  	
+	return process_wait(pid);
+	// return -1;
 }
 /*Creates a new file called file initially initial_size bytes in size. Returns true if successful, false otherwise. 
 Creating a new file does not open it: opening the new file is a separate operation which would require a open system call.*/
@@ -223,7 +248,7 @@ When a single file is opened more than once, whether by a single process or diff
 file descriptor. Different file descriptors for a single file are closed independently in separate calls to close and 
 they do not share a file position.*/
 int open (const char *file){
-	//printf("ENTERED OPEN HANDLER\n");
+	// printf("ENTERED OPEN HANDLER\n");
     struct thread* cur = thread_current();
     if(file == NULL)
         return -1;
