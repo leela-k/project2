@@ -108,6 +108,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct list files;
+    struct file *exec;
     int prog_status;
     struct semaphore wait;
     bool done_exit;

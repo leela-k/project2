@@ -90,6 +90,8 @@ start_process (void *file_name_)
   success = load (file_name, &if_.eip, &if_.esp);
   if (!success)
     thread_exit ();
+  cur->exec = filesys_open (file_name);
+  file_deny_write (cur->exec);
   int ind = -1;
   void* stack = if_.esp;
   int stack_size = 0;
@@ -229,6 +231,8 @@ process_exit (void)
   while(!list_empty(&cur->wait.waiters)){
   	sema_up(&cur->wait);
   }
+  file_close (cur->exec);
+  cur->exec = NULL;
   cur->done_exit = true;
   if(cur -> parent){
   	intr_disable();
