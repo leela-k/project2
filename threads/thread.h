@@ -114,7 +114,6 @@ struct thread
     struct list children;
     struct thread* parent;
     struct list_elem children_elem;
-    struct file *fileIM;
     
     int child_loaded; //0 not loaded yet 1 success -1 failure
 #endif
