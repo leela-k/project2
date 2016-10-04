@@ -144,6 +144,7 @@ executable. You must use appropriate synchronization to ensure this.*/
 pid_t exec (const char *cmd_line){
 	// printf("ENTERED EXEC HANDLER\n");
 	struct thread* cur = thread_current();
+
 	if(!cmd_line){
 		exit(-1);
 	}
@@ -153,7 +154,7 @@ pid_t exec (const char *cmd_line){
 	if(!pagedir_get_page(cur->pagedir, cmd_line)){
         exit(-1);
     }
-
+    
     // struct file* newFile = filesys_open(cmd_line);
     // if(!newFile){
     //     return -1;
@@ -234,7 +235,16 @@ bool create (const char *file, unsigned initial_size){
 it is open or closed, and removing an open file does not close it. See Removing an Open File, for details.*/
 bool remove (const char *file){
 	//printf("ENTERED REMOVE HANDLER\n");
-	return false;
+    struct thread* cur = thread_current();
+    if(file == NULL)
+        return -1;
+    if(!(is_user_vaddr(file)))
+        exit(-1);
+    if(!pagedir_get_page(cur->pagedir, file)){
+        exit(-1);
+    }
+    return filesys_remove(file);
+
 }
 /*Opens the file called file. Returns a nonnegative integer handle called a "file descriptor" (fd), or -1 if the file could 
 not be opened.

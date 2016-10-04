@@ -28,23 +28,28 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+
   struct thread *parent = thread_current();
-  char *fn_copy;
+  char *fn_copy, fn_copy2;
   tid_t tid;
   struct thread *t;
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  fn_copy2 = palloc_get_page (0);
+  if (fn_copy == NULL || fn_copy2 == NULL)
     return TID_ERROR;
+
   strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (fn_copy2, file_name, PGSIZE);
+  
   char* in;
-  char* fname = strtok_r(file_name, " ", &in);
-
+  char* fname = strtok_r(fn_copy2, " ", &in);
   // struct childinfo* ci = malloc(sizeof(struct childinfo));
-
+  printf("%s\n", "We get here now");
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
+  palloc_free_page (fn_copy2);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   t = get_thread(tid);
@@ -68,6 +73,7 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
@@ -84,9 +90,12 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
 
   token = strtok_r (file_name, " ", &input);
+  printf("we get here\n");
   success = load (file_name, &if_.eip, &if_.esp);
   if (!success)
     thread_exit ();
+  cur->fileIM = file_open(file_name);
+  file_deny_write (cur->fileIM);
   int ind = -1;
   void* stack = if_.esp;
   int stack_size = 0;
@@ -450,7 +459,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-
+  
   success = true;
 
  done:
