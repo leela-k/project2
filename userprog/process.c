@@ -41,27 +41,25 @@ process_execute (const char *file_name)
     return TID_ERROR;
 
   strlcpy(fn_copy, file_name, PGSIZE);
+
+  char* f = malloc (strlen (file_name) + 1);
+  
+  memcpy (f, file_name, strlen (file_name) + 1);
   
   char* in;
-  char* fname = strtok_r(file_name, " ", &in);
-  // struct childinfo* ci = malloc(sizeof(struct childinfo));
+  char* fname = strtok_r(f, " ", &in);
+
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (f, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   t = get_thread(tid);
-  // sema_down(&t->wait);
-  // while(t->status == THREAD_BLOCKED){
-  // 	thread_unblock(t);
-  // }
+  
   if(t->prog_status == -1){
-  	// printf("Calling wait\n");
   	process_wait(t->tid);
   }
-  // printf("TID is %d status is %d\n", t->tid, t->prog_status);
-  // ci -> tid = tid;
-  // ci -> threadC = thread_by_tid(tid);
-  // list_push_back(&parent->children, &ci->elem);
+  
   return tid;
 }
 
@@ -88,8 +86,9 @@ start_process (void *file_name_)
 
   token = strtok_r (file_name, " ", &input);
   success = load (file_name, &if_.eip, &if_.esp);
-  if (!success)
+  if (!success){
     thread_exit ();
+  }
   cur->exec = filesys_open (file_name);
   file_deny_write (cur->exec);
   int ind = -1;
@@ -141,17 +140,6 @@ start_process (void *file_name_)
      The stack is printed twice with the strings show in the first one
      and the pointers shown in the second one.*/
 
-  //printf("\nPrinting strings in stack\n");
-  // for(int i = stack_size - 1; i >= 0; i --){
-     //printf("%p   val1 is %c\n", stack + i, *(char*)(stack + i));
-  // }
-  //printf("\n\n");
-  //printf("Printing pointers in stack\n");
-  // for(int i = stack_size - 1; i >= 0; i --){
-    // if(i % 4 == 0){
-      //printf("%p   valp is %p\n",stack + i, *(char**)(stack + i));
-    // }
-  // }
 
   // printf("Copy done\n");
   if_.esp = (void *) stack;
@@ -181,12 +169,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  // This is a temporary hack in order for tests to run until process_wait is implemented
-  // for ( int c = 1 ; c <= 40000 ; c++ )
-  //      for ( int d = 1 ; d <= 40000 ; d++ )
-  //      {}
-  // return -1;
-  // printf("child is %d\n", child_tid);
+  
   struct thread *cur_thread, *child;
   cur_thread = thread_current();
   child = get_thread(child_tid);
@@ -195,16 +178,12 @@ process_wait (tid_t child_tid)
   		// printf("Invalid %d %d %d\n", child_tid, cur_thread->tid, child->parent->tid);
   		return -1;
   }
-  // printf("Valid %d %d %d\n", child_tid, cur_thread->tid, child->parent->tid);
-  // printf("Prog status is %d\n", child->prog_status);
-  // printf("Semaphore is %d\n", child->wait.value);
-  // Process already waited
+  
   if(child->wait.value == 1){
   	// printf("Already waited\n");
   	return -1;
   }
-  // child->done_wait = true;
-  // while(!(child->done_exit)){
+  
   sema_down(&child->wait);
   printf("%s: exit(%d)\n", child->name, child->prog_status);
   while(child->status == THREAD_BLOCKED){
@@ -212,22 +191,18 @@ process_wait (tid_t child_tid)
   	thread_unblock(child);
   }
   sema_up(&child->wait);
-  // printf("Sempahore finished waiting is %d\n", child->wait.value);
+  
   return child->prog_status;
-  // }
-  // return child->status;
-
-
+  
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
-  // printf("IN PROCESS_EXIT\n");
+  
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  // printf("Exiting %d\n", cur->tid);
   while(!list_empty(&cur->wait.waiters)){
   	sema_up(&cur->wait);
   }
@@ -239,15 +214,6 @@ process_exit (void)
   	thread_block();
   	intr_enable();
   }
-  // if(thread_alive(cur -> parent)){
-  // 	struct list_elem *child;
-  // 	while(!list_empty(&cur->parent->children)){
-  // 		child = list_begin(&cur->parent->children);
-  // 		struct *curr_thread;
-  // 		curr_thread = thread_by_tid(child->tid);
-  // 	}
-  // }
-  // cur->done_exit = true;
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -375,7 +341,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file = filesys_open (file_name);
   if (file == NULL) 
     {
-      //printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
 
@@ -388,7 +354,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      //printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
 
