@@ -33,6 +33,7 @@ void* add_frame(enum palloc_flags page_flags)
 		add_frame_entry(frame);
 	}
 	return frame;
+	
 }
 
 void remove_frame(void *frame){
