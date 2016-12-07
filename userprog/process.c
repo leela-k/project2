@@ -55,7 +55,7 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   t = get_thread(tid);
-  
+  t->curr_dir = parent->curr_dir;
   if(t->prog_status == -1){
   	process_wait(t->tid);
   }

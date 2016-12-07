@@ -197,6 +197,18 @@ int wait (pid_t pid){
 	return process_wait(pid);
 	// return -1;
 }
+
+// int get_path_type(const char *file){
+//     if(strchr(file, '/') != NULL){
+//         char curr = file;
+//         while(curr != NULL){
+            
+//         }
+//     }
+//     else{
+
+//     }
+// }
 /*Creates a new file called file initially initial_size bytes in size. Returns true if successful, false otherwise. 
 Creating a new file does not open it: opening the new file is a separate operation which would require a open system call.*/
 bool create (const char *file, unsigned initial_size){

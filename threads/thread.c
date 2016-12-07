@@ -212,6 +212,7 @@ thread_create (const char *name, int priority,
   t->parent = cur_thread;
   t->done_exit = false;
   t->parent->child_loaded = 0;
+  t->curr_dir = '.';
   // t->parent = thread_current();
   // t->done_wait = false;
   // t->done_exit = false;

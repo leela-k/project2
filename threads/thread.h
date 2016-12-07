@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <string.h>
 #include "threads/synch.h"
 
 /* States in a thread's life cycle. */
@@ -121,6 +122,7 @@ struct thread
 
     /* Owned by thread.c. */ 
     unsigned magic;                     /* Detects stack overflow. */
+    char* curr_dir;
   };
 
 /* If false (default), use round-robin scheduler.
